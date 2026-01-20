@@ -144,29 +144,38 @@ class _AnimatedSpriteState extends State<AnimatedSprite>
     super.dispose();
   }
 
+  // Max sprite display size to prevent oversized sprites on large screens
+  static const double maxSpriteSize = 128.0;
+
   @override
   Widget build(BuildContext context) {
     final displayWidth = widget.frameWidth * widget.scale;
     final displayHeight = widget.frameHeight * widget.scale;
     
-    return SizedBox(
-      width: displayWidth,
-      height: displayHeight,
-      child: ClipRect(
-        child: OverflowBox(
-          maxWidth: double.infinity,
-          maxHeight: double.infinity,
-          alignment: Alignment.topLeft,
-          child: Transform.translate(
-            offset: Offset(
-              -_currentFrame * widget.frameWidth * widget.scale,
-              -widget.row * widget.frameHeight * widget.scale,
-            ),
-            child: Image.asset(
-              widget.imagePath,
-              fit: BoxFit.none,
-              scale: 1 / widget.scale,
-              filterQuality: FilterQuality.none, // Keep pixel art crisp
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: maxSpriteSize,
+        maxHeight: maxSpriteSize,
+      ),
+      child: SizedBox(
+        width: displayWidth,
+        height: displayHeight,
+        child: ClipRect(
+          child: OverflowBox(
+            maxWidth: double.infinity,
+            maxHeight: double.infinity,
+            alignment: Alignment.topLeft,
+            child: Transform.translate(
+              offset: Offset(
+                -_currentFrame * widget.frameWidth * widget.scale,
+                -widget.row * widget.frameHeight * widget.scale,
+              ),
+              child: Image.asset(
+                widget.imagePath,
+                fit: BoxFit.none,
+                scale: 1 / widget.scale,
+                filterQuality: FilterQuality.none, // Keep pixel art crisp
+              ),
             ),
           ),
         ),
@@ -239,6 +248,9 @@ class StaticSprite extends StatelessWidget {
     );
   }
 
+  // Max sprite display size to prevent oversized sprites on large screens
+  static const double maxSpriteSize = 128.0;
+
   @override
   Widget build(BuildContext context) {
     if (frameWidth != null && frameHeight != null) {
@@ -246,24 +258,30 @@ class StaticSprite extends StatelessWidget {
        final displayWidth = frameWidth! * scale;
        final displayHeight = frameHeight! * scale;
 
-       return SizedBox(
-         width: displayWidth,
-         height: displayHeight,
-         child: ClipRect(
-           child: OverflowBox(
-             maxWidth: double.infinity,
-             maxHeight: double.infinity,
-             alignment: Alignment.topLeft,
-             child: Transform.translate(
-               offset: Offset(
-                 -col * frameWidth! * scale,
-                 -row * frameHeight! * scale,
-               ),
-               child: Image.asset(
-                 imagePath,
-                 fit: BoxFit.none,
-                 scale: 1 / scale,
-                 filterQuality: FilterQuality.none, 
+       return ConstrainedBox(
+         constraints: BoxConstraints(
+           maxWidth: maxSpriteSize,
+           maxHeight: maxSpriteSize,
+         ),
+         child: SizedBox(
+           width: displayWidth,
+           height: displayHeight,
+           child: ClipRect(
+             child: OverflowBox(
+               maxWidth: double.infinity,
+               maxHeight: double.infinity,
+               alignment: Alignment.topLeft,
+               child: Transform.translate(
+                 offset: Offset(
+                   -col * frameWidth! * scale,
+                   -row * frameHeight! * scale,
+                 ),
+                 child: Image.asset(
+                   imagePath,
+                   fit: BoxFit.none,
+                   scale: 1 / scale,
+                   filterQuality: FilterQuality.none, 
+                 ),
                ),
              ),
            ),
@@ -271,11 +289,17 @@ class StaticSprite extends StatelessWidget {
        );
     }
 
-    return Image.asset(
-      imagePath,
-      scale: 1 / scale,
-      filterQuality: FilterQuality.none, 
-      fit: fit,
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: maxSpriteSize,
+        maxHeight: maxSpriteSize,
+      ),
+      child: Image.asset(
+        imagePath,
+        scale: 1 / scale,
+        filterQuality: FilterQuality.none, 
+        fit: fit,
+      ),
     );
   }
 }
