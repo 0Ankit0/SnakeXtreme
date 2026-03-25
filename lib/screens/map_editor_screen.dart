@@ -4,7 +4,6 @@ import '../utils/app_colors.dart';
 import '../widgets/animated_background.dart';
 import '../controllers/map_editor_controller.dart';
 import '../utils/sprite_utils.dart';
-import '../widgets/animated_sprite.dart';
 
 class MapEditorScreen extends StatefulWidget {
   const MapEditorScreen({super.key});
@@ -203,13 +202,18 @@ class _MapEditorScreenState extends State<MapEditorScreen> {
     }
 
     return Positioned(
-      left: center.dx - 24, // Assuming width ~48
+      left: center.dx - (_ladderWidth(tileSize) / 2),
       top: center.dy - (distance / 2),
       child: Transform.rotate(
         angle: rads,
         child: SizedBox(
+          width: _ladderWidth(tileSize),
           height: distance,
-          child: StaticSprite.ladder(size: size, scale: 0.8), // Adjust scale
+          child: Image.asset(
+            GameAssets.getLadderBySize(size),
+            fit: BoxFit.fill,
+            filterQuality: FilterQuality.none,
+          ),
         ),
       ),
     );
@@ -222,21 +226,36 @@ class _MapEditorScreenState extends State<MapEditorScreen> {
      return Stack(
        children: [
          CustomPaint(
-           painter: SnakeBodyPainter(startPos, endPos),
+           painter: SnakeBodyPainter(startPos, endPos, tileSize),
          ),
          Positioned(
-           left: startPos.dx - 16,
-           top: startPos.dy - 16,
-           child: StaticSprite.snakeHead(scale: 0.6),
+           left: startPos.dx - (_snakeHeadSize(tileSize) / 2),
+           top: startPos.dy - (_snakeHeadSize(tileSize) / 2),
+           child: Image.asset(
+             GameAssets.snakeHead,
+             width: _snakeHeadSize(tileSize),
+             height: _snakeHeadSize(tileSize),
+             fit: BoxFit.contain,
+             filterQuality: FilterQuality.none,
+           ),
          ),
          Positioned(
-           left: endPos.dx - 16,
-           top: endPos.dy - 16,
-           child: Image.asset(GameAssets.snakeTail, width: 32, height: 32),
+           left: endPos.dx - (_snakeTailSize(tileSize) / 2),
+           top: endPos.dy - (_snakeTailSize(tileSize) / 2),
+           child: Image.asset(
+             GameAssets.snakeTail,
+             width: _snakeTailSize(tileSize),
+             height: _snakeTailSize(tileSize),
+             filterQuality: FilterQuality.none,
+           ),
          ),
        ],
      );
   }
+
+  double _ladderWidth(double tileSize) => (tileSize * 0.72).clamp(18.0, 40.0);
+  double _snakeHeadSize(double tileSize) => (tileSize * 0.88).clamp(24.0, 52.0);
+  double _snakeTailSize(double tileSize) => (tileSize * 0.72).clamp(20.0, 44.0);
 
   Offset _getTileCenter(int tileNumber, double tileSize) {
     // 0-indexed coords
@@ -296,8 +315,9 @@ class _MapEditorScreenState extends State<MapEditorScreen> {
 class SnakeBodyPainter extends CustomPainter {
   final Offset start; // Head
   final Offset end;   // Tail
+  final double tileSize;
 
-  SnakeBodyPainter(this.start, this.end);
+  SnakeBodyPainter(this.start, this.end, this.tileSize);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -310,20 +330,21 @@ class SnakeBodyPainter extends CustomPainter {
       ..color = const Color(0xFF00FF00)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 6;
+      ..strokeWidth = (tileSize * 0.24).clamp(6.0, 14.0);
 
     final path = Path();
     path.moveTo(start.dx, start.dy);
     final mid = (start + end) / 2;
     // Simple S curve
-    final control1 = Offset(mid.dx + 40, start.dy + (mid.dy - start.dy)/2);
-    final control2 = Offset(mid.dx - 40, end.dy - (end.dy - mid.dy)/2);
+    final wave = (tileSize * 1.1).clamp(24.0, 52.0);
+    final control1 = Offset(mid.dx + wave, start.dy + (mid.dy - start.dy)/2);
+    final control2 = Offset(mid.dx - wave, end.dy - (end.dy - mid.dy)/2);
     path.cubicTo(control1.dx, control1.dy, control2.dx, control2.dy, end.dx, end.dy);
     
     // Outer glow
-    canvas.drawPath(path, paint..strokeWidth = 10..color = const Color(0xFF00FF00).withValues(alpha: 0.3)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
+    canvas.drawPath(path, paint..strokeWidth = (tileSize * 0.30).clamp(8.0, 18.0)..color = const Color(0xFF00FF00).withValues(alpha: 0.3)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
     // Inner Clean
-    canvas.drawPath(path, paint..strokeWidth = 4..color = const Color(0xFFAAFFAA)..maskFilter = null);
+    canvas.drawPath(path, paint..strokeWidth = (tileSize * 0.18).clamp(4.0, 10.0)..color = const Color(0xFFAAFFAA)..maskFilter = null);
   }
 
   @override
