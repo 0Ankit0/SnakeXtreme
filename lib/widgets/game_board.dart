@@ -4,7 +4,6 @@ import '../widgets/board_tile.dart';
 import '../widgets/player_token.dart';
 import '../controllers/game_controller.dart';
 import '../utils/sprite_utils.dart';
-import '../widgets/animated_sprite.dart';
 
 class GameBoard extends StatelessWidget {
   final GameController? controller;
@@ -73,9 +72,10 @@ class GameBoard extends StatelessWidget {
                      curve: Curves.easeInOut,
                      left: pos.dx,
                      top: pos.dy,
-                     child: PlayerToken(
+                   child: PlayerToken(
                        playerIndex: player.id,
                        action: player.action,
+                       tileSize: tileSize,
                      ),
                    );
                  }),
@@ -116,8 +116,9 @@ class GameBoard extends StatelessWidget {
      // Visual Row 0 is Top. Grid Row 0 is Bottom.
      // So Visual Row = 9 - rowIndex.
      // x = colIndex * tileSize
-     final double x = colIndex * tileSize + (tileSize / 2) - 16;
-     final double y = (9 - rowIndex) * tileSize + (tileSize / 2) - 16;
+     final tokenSize = _tokenSize(tileSize);
+     final double x = colIndex * tileSize + (tileSize / 2) - (tokenSize / 2);
+     final double y = (9 - rowIndex) * tileSize + (tileSize / 2) - (tokenSize / 2);
      
      return Offset(x, y);
   }
@@ -131,10 +132,11 @@ class GameBoard extends StatelessWidget {
   }) {
       final startPos = _getVisualOffset(start, tileSize); // Left, Top (of token center roughly)
       final endPos = _getVisualOffset(end, tileSize);
+      final tokenSize = _tokenSize(tileSize);
       
       // Adjust to true centers for math (offset was for 32px token)
-      final startCenter = startPos + const Offset(16, 16);
-      final endCenter = endPos + const Offset(16, 16);
+      final startCenter = startPos + Offset(tokenSize / 2, tokenSize / 2);
+      final endCenter = endPos + Offset(tokenSize / 2, tokenSize / 2);
       
       final dx = endCenter.dx - startCenter.dx;
       final dy = endCenter.dy - startCenter.dy;
@@ -167,12 +169,12 @@ class GameBoard extends StatelessWidget {
         // Image is vertical. So rotation = angle - (-pi/2) = angle + pi/2.
         
         return Positioned(
-          left: midPoint.dx - (24), // Approx width/2. 48px width asset?
+          left: midPoint.dx - (_ladderWidth(tileSize) / 2),
           top: midPoint.dy - (distance / 2),
           child: Transform.rotate(
             angle: angle + (math.pi / 2),
             child: SizedBox(
-              width: 48, // Fixed width for ladder
+              width: _ladderWidth(tileSize),
               height: distance,
               child: Image.asset(
                 asset,
@@ -193,22 +195,35 @@ class GameBoard extends StatelessWidget {
              // Body Curve
              Positioned.fill(
                child: CustomPaint(
-                 painter: SnakeBodyPainter(start: startCenter, end: endCenter),
+                 painter: SnakeBodyPainter(
+                   start: startCenter,
+                   end: endCenter,
+                   tileSize: tileSize,
+                 ),
                ),
              ),
              // Head (at Start)
              Positioned(
-               left: startCenter.dx - 16,
-               top: startCenter.dy - 16,
-               child: StaticSprite.snakeHead(scale: 1.0), // 32px
+               left: startCenter.dx - (_snakeHeadSize(tileSize) / 2),
+               top: startCenter.dy - (_snakeHeadSize(tileSize) / 2),
+               child: SizedBox(
+                 width: _snakeHeadSize(tileSize),
+                 height: _snakeHeadSize(tileSize),
+                 child: Image.asset(
+                   GameAssets.snakeHead,
+                   fit: BoxFit.contain,
+                   filterQuality: FilterQuality.none,
+                 ),
+               ),
              ),
              // Tail (at End)
              Positioned(
-               left: endCenter.dx - 16,
-               top: endCenter.dy - 16,
+               left: endCenter.dx - (_snakeTailSize(tileSize) / 2),
+               top: endCenter.dy - (_snakeTailSize(tileSize) / 2),
                child: Image.asset(
                  GameAssets.snakeTail,
-                 width: 32, height: 32,
+                 width: _snakeTailSize(tileSize),
+                 height: _snakeTailSize(tileSize),
                  filterQuality: FilterQuality.none,
                ),
              ),
@@ -216,18 +231,28 @@ class GameBoard extends StatelessWidget {
         );
       }
   }
+
+  double _tokenSize(double tileSize) => (tileSize * 0.62).clamp(24.0, 52.0);
+  double _ladderWidth(double tileSize) => (tileSize * 0.72).clamp(18.0, 40.0);
+  double _snakeHeadSize(double tileSize) => (tileSize * 0.88).clamp(24.0, 52.0);
+  double _snakeTailSize(double tileSize) => (tileSize * 0.72).clamp(20.0, 44.0);
 }
 
 class SnakeBodyPainter extends CustomPainter {
   final Offset start;
   final Offset end;
+  final double tileSize;
 
-  SnakeBodyPainter({required this.start, required this.end});
+  SnakeBodyPainter({
+    required this.start,
+    required this.end,
+    required this.tileSize,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..strokeWidth = 12.0
+      ..strokeWidth = (tileSize * 0.30).clamp(8.0, 18.0)
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
       ..shader = const LinearGradient(
@@ -241,15 +266,16 @@ class SnakeBodyPainter extends CustomPainter {
     final mid = (start + end) / 2;
     // Add perpendicular offset for curve
     
-    final control1 = Offset(mid.dx + 40, start.dy + (mid.dy - start.dy)/2);
-    final control2 = Offset(mid.dx - 40, end.dy - (end.dy - mid.dy)/2);
+    final wave = (tileSize * 1.1).clamp(24.0, 52.0);
+    final control1 = Offset(mid.dx + wave, start.dy + (mid.dy - start.dy)/2);
+    final control2 = Offset(mid.dx - wave, end.dy - (end.dy - mid.dy)/2);
     
     path.cubicTo(control1.dx, control1.dy, control2.dx, control2.dy, end.dx, end.dy);
     
     // Draw thick border
-    canvas.drawPath(path, paint..strokeWidth = 14..color = Colors.black.withValues(alpha: 0.5)..shader = null);
+    canvas.drawPath(path, paint..strokeWidth = (tileSize * 0.34).clamp(10.0, 20.0)..color = Colors.black.withValues(alpha: 0.5)..shader = null);
     // Draw body
-    canvas.drawPath(path, paint..strokeWidth = 10..shader = const LinearGradient(colors: [Colors.greenAccent, Colors.green]).createShader(Rect.fromPoints(start, end)));
+    canvas.drawPath(path, paint..strokeWidth = (tileSize * 0.26).clamp(7.0, 16.0)..shader = const LinearGradient(colors: [Colors.greenAccent, Colors.green]).createShader(Rect.fromPoints(start, end)));
     
     // Segment lines (ribs)
     // Complex to draw smoothly along curve without metric extraction. 
