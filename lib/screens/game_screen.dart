@@ -5,7 +5,7 @@ import '../widgets/animated_background.dart';
 import '../widgets/game_board.dart';
 import '../controllers/game_controller.dart';
 import '../services/audio_manager.dart';
-import '../widgets/animated_sprite.dart';
+import 'settings_screen.dart';
 
 class GameScreen extends StatefulWidget {
   final List<PlayerState>? players; // Optional, defaults if null
@@ -130,8 +130,13 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.pause_rounded, color: Colors.white),
-                          onPressed: () {},
+                          icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                          tooltip: 'Settings',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -210,15 +215,11 @@ class _GameScreenState extends State<GameScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (_controller.isRolling)
-                                    AnimatedSprite.diceRoll(
-                                      key: const ValueKey('rolling'),
-                                      scale: 1.5,
-                                    )
+                                    const _RollingDiceIcon()
                                   else
-                                    StaticSprite.diceFace(
+                                    _DiceFace(
                                       key: ValueKey(_controller.diceValue),
                                       number: _controller.diceValue,
-                                      scale: 1.5,
                                     ),
                                   
                                   const SizedBox(height: 8),
@@ -283,3 +284,102 @@ class _GameScreenState extends State<GameScreen> {
   }
 }
 
+class _RollingDiceIcon extends StatefulWidget {
+  const _RollingDiceIcon();
+
+  @override
+  State<_RollingDiceIcon> createState() => _RollingDiceIconState();
+}
+
+class _RollingDiceIconState extends State<_RollingDiceIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _controller,
+      child: const Icon(
+        Icons.casino_rounded,
+        size: 72,
+        color: Colors.white,
+      ),
+    );
+  }
+}
+
+class _DiceFace extends StatelessWidget {
+  final int number;
+
+  const _DiceFace({super.key, required this.number});
+
+  static const List<Offset> _pipOffsets = [
+    Offset(0.2, 0.2),
+    Offset(0.5, 0.2),
+    Offset(0.8, 0.2),
+    Offset(0.2, 0.5),
+    Offset(0.5, 0.5),
+    Offset(0.8, 0.5),
+    Offset(0.2, 0.8),
+    Offset(0.5, 0.8),
+    Offset(0.8, 0.8),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final activePips = _activePips(number.clamp(1, 6));
+    return Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: _pipOffsets.asMap().entries.map((entry) {
+          final index = entry.key;
+          final point = entry.value;
+          return Align(
+            alignment: Alignment(point.dx * 2 - 1, point.dy * 2 - 1),
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: activePips.contains(index) ? Colors.black87 : Colors.transparent,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Set<int> _activePips(int n) {
+    switch (n) {
+      case 1:
+        return {4};
+      case 2:
+        return {0, 8};
+      case 3:
+        return {0, 4, 8};
+      case 4:
+        return {0, 2, 6, 8};
+      case 5:
+        return {0, 2, 4, 6, 8};
+      case 6:
+        return {0, 2, 3, 5, 6, 8};
+      default:
+        return {4};
+    }
+  }
+}
