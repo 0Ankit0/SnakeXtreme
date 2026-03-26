@@ -121,7 +121,8 @@ class GameController extends ChangeNotifier {
       // Hit a snake
       await Future.delayed(const Duration(milliseconds: 200));
       player.action = PlayerAction.sliding; // 'Being Eaten' animation
-      AudioManager().playSfx(SfxType.gulp); // or cry
+      AudioManager().playSfx(SfxType.gulp);
+      await Future.delayed(const Duration(milliseconds: 140));
       AudioManager().playSfx(SfxType.slide);
       notifyListeners();
       

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../utils/sprite_utils.dart';
-import '../widgets/animated_sprite.dart';
 import '../controllers/game_controller.dart';
 
 class PlayerToken extends StatelessWidget {
@@ -17,30 +16,12 @@ class PlayerToken extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine animation based on state
-    final PlayerAnimation animation;
-    switch (action) {
-      case PlayerAction.walking:
-        animation = PlayerAnimation.walking;
-        break;
-      case PlayerAction.climbing:
-        animation = PlayerAnimation.climbing;
-        break;
-      case PlayerAction.sliding:
-        animation = PlayerAnimation.beingEaten;
-        break;
-      case PlayerAction.dancing:
-        animation = PlayerAnimation.dancing;
-        break;
-      case PlayerAction.idle:
-        animation = PlayerAnimation.idle;
-        break;
-    }
-
     final tokenSize = (tileSize * 0.62).clamp(24.0, 52.0);
     final shadowWidth = tokenSize * 0.66;
     final shadowTop = tokenSize * 0.88;
-    final spriteLift = tokenSize * 0.32;
+    final tokenColor = GameAssets.getPlayerColor(playerIndex);
+    final isMoving = action == PlayerAction.walking || action == PlayerAction.climbing;
+    final isDanger = action == PlayerAction.sliding;
 
     return SizedBox(
       width: tokenSize,
@@ -59,14 +40,30 @@ class PlayerToken extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
           ),
-          // Sprite
+          // Code-rendered token avoids sprite-sheet/binary asset dependency.
           Transform.translate(
-            offset: Offset(0, -spriteLift), // Adjust to stand on tile center
-            child: AnimatedSprite.player(
-              playerColorIndex: playerIndex,
-              animation: animation,
-              scale: (tokenSize / PlayerSpriteConfig.frameSize).clamp(0.85, 1.65),
-              loop: true,
+            offset: Offset(0, -tokenSize * 0.28),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: tokenSize * 0.74,
+              height: tokenSize * 0.74,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: tokenColor,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: tokenColor.withValues(alpha: isMoving ? 0.55 : 0.25),
+                    blurRadius: isMoving ? 10 : 4,
+                    spreadRadius: isMoving ? 2 : 0,
+                  ),
+                ],
+              ),
+              child: Icon(
+                isDanger ? Icons.warning_rounded : Icons.sports_esports_rounded,
+                color: Colors.white,
+                size: tokenSize * 0.34,
+              ),
             ),
           ),
           // Turn Indicator (if needed)

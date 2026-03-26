@@ -24,15 +24,6 @@ class AudioManager {
   // Cache settings
   final SettingsController _settings = SettingsController();
 
-  final Map<SfxType, String> _sfxFiles = {
-    SfxType.buttonClick: 'audio/button_click.mp3',
-    SfxType.diceRoll: 'audio/dice_roll.mp3',
-    SfxType.step: 'audio/step.mp3',
-    SfxType.climb: 'audio/climb.mp3',
-    SfxType.slide: 'audio/slide.mp3',
-    SfxType.gulp: 'audio/gulp.mp3',
-    SfxType.win: 'audio/win.mp3',
-  };
   final Map<String, Uint8List> _webAudioCache = {};
 
   void init() {
@@ -78,74 +69,134 @@ class AudioManager {
   }
 
   Future<void> playSfx(SfxType type) async {
-    if (!_settings.sfxEnabled) return;
-    
-    // Check specific toggles
-    bool allowed = true;
+    if (!_isTypeEnabled(type)) return;
+    await _playPreset(type, _presetForType(type));
+  }
+
+  Future<void> previewSfx(SfxType type) async {
+    if (!_isTypeEnabled(type)) return;
+    await _playPreset(type, _presetForType(type));
+  }
+
+  bool _isTypeEnabled(SfxType type) {
+    if (!_settings.sfxEnabled) return false;
     switch (type) {
-      case SfxType.diceRoll: allowed = _settings.sfxDice; break;
-      case SfxType.step: allowed = _settings.sfxRun; break;
-      case SfxType.climb: allowed = _settings.sfxClimb; break;
-      case SfxType.slide: allowed = _settings.sfxCry; break;
-      case SfxType.gulp: allowed = _settings.sfxGulp; break;
-      case SfxType.win: allowed = _settings.sfxDance; break;
-      default: allowed = true;
+      case SfxType.diceRoll:
+        return _settings.sfxDice;
+      case SfxType.step:
+        return _settings.sfxRun;
+      case SfxType.climb:
+        return _settings.sfxClimb;
+      case SfxType.slide:
+        return _settings.sfxCry;
+      case SfxType.gulp:
+        return _settings.sfxGulp;
+      case SfxType.win:
+        return _settings.sfxDance;
+      case SfxType.buttonClick:
+        return true;
     }
-    
-    if (!allowed) return;
+  }
+
+  SfxPreset _presetForType(SfxType type) {
+    switch (type) {
+      case SfxType.diceRoll:
+        return _settings.presetDice;
+      case SfxType.step:
+        return _settings.presetRun;
+      case SfxType.climb:
+        return _settings.presetClimb;
+      case SfxType.slide:
+        return _settings.presetCry;
+      case SfxType.gulp:
+        return _settings.presetGulp;
+      case SfxType.win:
+        return _settings.presetDance;
+      case SfxType.buttonClick:
+        return SfxPreset.classic;
+    }
+  }
+
+  Future<void> _playPreset(SfxType type, SfxPreset preset) async {
+    final recipe = _recipeFor(type, preset);
 
     try {
-      // Create a temporary player for overlapping sounds if needed, 
-      // but for simplicity using shared. Or creates new one for overlapping?
-      // AudioPlayer() is lightweight? 
-      // Let's use the shared _sfxPlayer for now to prevent spam, 
-      // EXCEPT for steps which might need to be frequent.
-      
-      // Actually, for a game, `stop()` then `play()` cuts off the previous sound.
-      // Good for cutting off a long "slide" if new event happens, but bad for "step step step".
-      // Let's use a "fire and forget" mode where we make a new player for each SFX 
-      // and dispose it on complete? 
-      // AudioPlayers has `AudioCache` (now implicit).
-      // `AudioPlayer().play` is standard.
-      
       final player = AudioPlayer();
       await player.setVolume(_settings.sfxVolume);
-      // Play and dispose automatically? 
-      // We need to listen to complete.
-      
-      player.onPlayerComplete.listen((event) { 
+      player.onPlayerComplete.listen((event) {
         player.dispose();
       });
-      
-      if (kIsWeb) {
-        await player.play(BytesSource(_webSfxBytes(type)));
-      } else {
-        final path = _sfxFiles[type];
-        if (path != null) {
-          await player.play(AssetSource(path));
-        }
-      }
+      await player.play(
+        BytesSource(
+          _getOrCreateWebAudio('${type.name}_${preset.name}', () {
+            return _createWaveBytes(
+              durationSeconds: recipe.duration,
+              frequencies: recipe.frequencies,
+              volume: recipe.volume,
+              sweep: recipe.sweep,
+              arpeggio: recipe.arpeggio,
+            );
+          }),
+        ),
+      );
     } catch (e) {
       debugPrint('Error playing SFX: $e');
     }
   }
 
-  Uint8List _webSfxBytes(SfxType type) {
-    switch (type) {
-      case SfxType.buttonClick:
-        return _getOrCreateWebAudio('buttonClick', () => _createWaveBytes(durationSeconds: 0.08, frequencies: const [1200, 1600], volume: 0.40));
-      case SfxType.diceRoll:
-        return _getOrCreateWebAudio('diceRoll', () => _createWaveBytes(durationSeconds: 0.55, frequencies: const [300, 900], volume: 0.38, sweep: true));
-      case SfxType.step:
-        return _getOrCreateWebAudio('step', () => _createWaveBytes(durationSeconds: 0.09, frequencies: const [220, 280], volume: 0.45));
-      case SfxType.climb:
-        return _getOrCreateWebAudio('climb', () => _createWaveBytes(durationSeconds: 0.35, frequencies: const [440, 660], volume: 0.35, sweep: true));
-      case SfxType.slide:
-        return _getOrCreateWebAudio('slide', () => _createWaveBytes(durationSeconds: 0.45, frequencies: const [880, 220], volume: 0.35, sweep: true));
-      case SfxType.gulp:
-        return _getOrCreateWebAudio('gulp', () => _createWaveBytes(durationSeconds: 0.20, frequencies: const [180, 120], volume: 0.45, sweep: true));
-      case SfxType.win:
-        return _getOrCreateWebAudio('win', () => _createWaveBytes(durationSeconds: 0.80, frequencies: const [523, 659, 784], volume: 0.30));
+  _SfxRecipe _recipeFor(SfxType type, SfxPreset preset) {
+    switch (preset) {
+      case SfxPreset.classic:
+        switch (type) {
+          case SfxType.buttonClick:
+            return const _SfxRecipe([1200, 1600], 0.08, 0.40);
+          case SfxType.diceRoll:
+            return const _SfxRecipe([280, 860], 0.55, 0.35, sweep: true);
+          case SfxType.step:
+            return const _SfxRecipe([220, 280], 0.10, 0.45);
+          case SfxType.climb:
+            return const _SfxRecipe([380, 620], 0.30, 0.35, sweep: true);
+          case SfxType.slide:
+            return const _SfxRecipe([980, 240], 0.45, 0.34, sweep: true);
+          case SfxType.gulp:
+            return const _SfxRecipe([180, 120], 0.20, 0.48, sweep: true);
+          case SfxType.win:
+            return const _SfxRecipe([523, 659, 784], 0.80, 0.30, arpeggio: true);
+        }
+      case SfxPreset.arcade:
+        switch (type) {
+          case SfxType.buttonClick:
+            return const _SfxRecipe([1500, 1800], 0.07, 0.36);
+          case SfxType.diceRoll:
+            return const _SfxRecipe([440, 1020], 0.50, 0.34, sweep: true);
+          case SfxType.step:
+            return const _SfxRecipe([280, 340], 0.08, 0.40);
+          case SfxType.climb:
+            return const _SfxRecipe([440, 740], 0.28, 0.32, sweep: true);
+          case SfxType.slide:
+            return const _SfxRecipe([1200, 280], 0.40, 0.33, sweep: true);
+          case SfxType.gulp:
+            return const _SfxRecipe([220, 140], 0.18, 0.45, sweep: true);
+          case SfxType.win:
+            return const _SfxRecipe([659, 784, 1046], 0.72, 0.28, arpeggio: true);
+        }
+      case SfxPreset.punchy:
+        switch (type) {
+          case SfxType.buttonClick:
+            return const _SfxRecipe([900, 1400], 0.06, 0.46);
+          case SfxType.diceRoll:
+            return const _SfxRecipe([210, 740], 0.44, 0.42, sweep: true);
+          case SfxType.step:
+            return const _SfxRecipe([160, 250], 0.07, 0.52);
+          case SfxType.climb:
+            return const _SfxRecipe([300, 520], 0.22, 0.42, sweep: true);
+          case SfxType.slide:
+            return const _SfxRecipe([780, 180], 0.36, 0.41, sweep: true);
+          case SfxType.gulp:
+            return const _SfxRecipe([140, 96], 0.16, 0.58, sweep: true);
+          case SfxType.win:
+            return const _SfxRecipe([784, 988, 1174], 0.60, 0.35, arpeggio: true);
+        }
     }
   }
 
@@ -223,4 +274,20 @@ class AudioManager {
 
     return bytes.buffer.asUint8List();
   }
+}
+
+class _SfxRecipe {
+  final List<double> frequencies;
+  final double duration;
+  final double volume;
+  final bool sweep;
+  final bool arpeggio;
+
+  const _SfxRecipe(
+    this.frequencies,
+    this.duration,
+    this.volume, {
+    this.sweep = false,
+    this.arpeggio = false,
+  });
 }

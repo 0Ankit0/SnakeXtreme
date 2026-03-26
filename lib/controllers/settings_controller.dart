@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum SfxPreset { classic, arcade, punchy }
+
 class SettingsController extends ChangeNotifier {
   static final SettingsController _instance = SettingsController._internal();
   factory SettingsController() => _instance;
@@ -24,6 +26,14 @@ class SettingsController extends ChangeNotifier {
   bool sfxDice = true;
   bool sfxClimb = true;
 
+  // Presets per SFX row
+  SfxPreset presetDice = SfxPreset.classic;
+  SfxPreset presetGulp = SfxPreset.classic;
+  SfxPreset presetCry = SfxPreset.classic;
+  SfxPreset presetRun = SfxPreset.classic;
+  SfxPreset presetClimb = SfxPreset.classic;
+  SfxPreset presetDance = SfxPreset.classic;
+
   Future<void> init() async {
     if (_initialized) return;
     _prefs = await SharedPreferences.getInstance();
@@ -40,6 +50,13 @@ class SettingsController extends ChangeNotifier {
     sfxRun = _prefs.getBool('sfxRun') ?? true;
     sfxDice = _prefs.getBool('sfxDice') ?? true;
     sfxClimb = _prefs.getBool('sfxClimb') ?? true;
+
+    presetDice = _readPreset('presetDice');
+    presetGulp = _readPreset('presetGulp');
+    presetCry = _readPreset('presetCry');
+    presetRun = _readPreset('presetRun');
+    presetClimb = _readPreset('presetClimb');
+    presetDance = _readPreset('presetDance');
     
     _initialized = true;
     notifyListeners();
@@ -105,5 +122,49 @@ class SettingsController extends ChangeNotifier {
     sfxClimb = value;
     await _prefs.setBool('sfxClimb', value);
     notifyListeners();
+  }
+
+  Future<void> setPresetDice(SfxPreset value) async {
+    presetDice = value;
+    await _prefs.setString('presetDice', value.name);
+    notifyListeners();
+  }
+
+  Future<void> setPresetGulp(SfxPreset value) async {
+    presetGulp = value;
+    await _prefs.setString('presetGulp', value.name);
+    notifyListeners();
+  }
+
+  Future<void> setPresetCry(SfxPreset value) async {
+    presetCry = value;
+    await _prefs.setString('presetCry', value.name);
+    notifyListeners();
+  }
+
+  Future<void> setPresetRun(SfxPreset value) async {
+    presetRun = value;
+    await _prefs.setString('presetRun', value.name);
+    notifyListeners();
+  }
+
+  Future<void> setPresetClimb(SfxPreset value) async {
+    presetClimb = value;
+    await _prefs.setString('presetClimb', value.name);
+    notifyListeners();
+  }
+
+  Future<void> setPresetDance(SfxPreset value) async {
+    presetDance = value;
+    await _prefs.setString('presetDance', value.name);
+    notifyListeners();
+  }
+
+  SfxPreset _readPreset(String key) {
+    final raw = _prefs.getString(key);
+    return SfxPreset.values.firstWhere(
+      (preset) => preset.name == raw,
+      orElse: () => SfxPreset.classic,
+    );
   }
 }
