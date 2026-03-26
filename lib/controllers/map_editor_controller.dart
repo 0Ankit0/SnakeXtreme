@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/board_overlays.dart';
 
 enum EditorTool { none, snake, ladder, eraser }
 
@@ -70,6 +71,19 @@ class MapEditorController extends ChangeNotifier {
   }
 
   void _eraseAt(int tile) {
+    bool changed = _removeByEndpoint(tile);
+    changed = _removeByPath(tile) || changed;
+    if (changed) notifyListeners();
+  }
+  
+  bool _isOccupied(int tile) {
+    return snakes.containsKey(tile) ||
+        ladders.containsKey(tile) ||
+        snakes.containsValue(tile) ||
+        ladders.containsValue(tile);
+  }
+
+  bool _removeByEndpoint(int tile) {
     bool changed = false;
     if (snakes.containsKey(tile)) {
       snakes.remove(tile);
@@ -79,11 +93,35 @@ class MapEditorController extends ChangeNotifier {
       ladders.remove(tile);
       changed = true;
     }
-    if (changed) notifyListeners();
+    final snakeStart = snakes.entries.where((e) => e.value == tile).map((e) => e.key).toList();
+    for (final key in snakeStart) {
+      snakes.remove(key);
+      changed = true;
+    }
+    final ladderStart = ladders.entries.where((e) => e.value == tile).map((e) => e.key).toList();
+    for (final key in ladderStart) {
+      ladders.remove(key);
+      changed = true;
+    }
+    return changed;
   }
-  
-  bool _isOccupied(int tile) {
-    return snakes.containsKey(tile) || ladders.containsKey(tile);
+
+  bool _removeByPath(int tile) {
+    for (final entry in snakes.entries.toList()) {
+      final tiles = BoardGeometry.sampledPathTiles(start: entry.key, end: entry.value, snake: true);
+      if (tiles.contains(tile)) {
+        snakes.remove(entry.key);
+        return true;
+      }
+    }
+    for (final entry in ladders.entries.toList()) {
+      final tiles = BoardGeometry.sampledPathTiles(start: entry.key, end: entry.value, snake: false);
+      if (tiles.contains(tile)) {
+        ladders.remove(entry.key);
+        return true;
+      }
+    }
+    return false;
   }
 
   bool _isValidPlacement(int start, int end) {
@@ -126,10 +164,10 @@ class MapEditorController extends ChangeNotifier {
       try {
         final data = jsonDecode(jsonString) as Map<String, dynamic>;
         
-        final loadedSnakes = (data['snakes'] as Map<String, dynamic>).map(
+        final loadedSnakes = ((data['snakes'] ?? {}) as Map<String, dynamic>).map(
           (k, v) => MapEntry(int.parse(k), v as int)
         );
-        final loadedLadders = (data['ladders'] as Map<String, dynamic>).map(
+        final loadedLadders = ((data['ladders'] ?? {}) as Map<String, dynamic>).map(
           (k, v) => MapEntry(int.parse(k), v as int)
         );
         

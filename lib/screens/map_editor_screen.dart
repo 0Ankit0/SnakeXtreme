@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../widgets/animated_background.dart';
 import '../controllers/map_editor_controller.dart';
-import '../utils/sprite_utils.dart';
+import '../widgets/board_overlays.dart';
 
 class MapEditorScreen extends StatefulWidget {
   const MapEditorScreen({super.key});
@@ -164,111 +164,15 @@ class _MapEditorScreenState extends State<MapEditorScreen> {
                }),
              ),
              
-             // Overlays (Snakes & Ladders)
-             // Ladders
-             ..._controller.ladders.entries.map((entry) {
-                 return _buildLadderOverlay(entry.key, entry.value, tileSize);
-             }),
-             // Snakes
-             ..._controller.snakes.entries.map((entry) {
-                 return _buildSnakeOverlay(entry.key, entry.value, tileSize);
-             }),
+             BoardOverlayLayer(
+               snakes: _controller.snakes,
+               ladders: _controller.ladders,
+               tileSize: tileSize,
+             ),
           ],
         );
       }
     );
-  }
-  
-  // Duplicated rendering logic from GameBoard, but adapted
-  Widget _buildLadderOverlay(int start, int end, double tileSize) {
-    // start < end
-    final startPos = _getTileCenter(start, tileSize);
-    final endPos = _getTileCenter(end, tileSize);
-    
-    final dx = endPos.dx - startPos.dx;
-    final dy = endPos.dy - startPos.dy;
-    final distance = (endPos - startPos).distance;
-    
-    final center = Offset((startPos.dx + endPos.dx)/2, (startPos.dy + endPos.dy)/2);
-    
-    final double rads =  (Offset(dx, dy).direction) + 3.14159/2;
-
-    double tilesSpanned = distance / tileSize;
-    int size = 3;
-    if (tilesSpanned < 2.5) {
-      size = 1;
-    } else if (tilesSpanned < 5.0) {
-      size = 2;
-    }
-
-    return Positioned(
-      left: center.dx - (_ladderWidth(tileSize) / 2),
-      top: center.dy - (distance / 2),
-      child: Transform.rotate(
-        angle: rads,
-        child: SizedBox(
-          width: _ladderWidth(tileSize),
-          height: distance,
-          child: Image.asset(
-            GameAssets.getLadderBySize(size),
-            fit: BoxFit.fill,
-            filterQuality: FilterQuality.none,
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildSnakeOverlay(int start, int end, double tileSize) {
-     final startPos = _getTileCenter(start, tileSize);
-     final endPos = _getTileCenter(end, tileSize);
-
-     return Stack(
-       children: [
-         CustomPaint(
-           painter: SnakeBodyPainter(startPos, endPos, tileSize),
-         ),
-         Positioned(
-           left: startPos.dx - (_snakeHeadSize(tileSize) / 2),
-           top: startPos.dy - (_snakeHeadSize(tileSize) / 2),
-           child: Image.asset(
-             GameAssets.snakeHead,
-             width: _snakeHeadSize(tileSize),
-             height: _snakeHeadSize(tileSize),
-             fit: BoxFit.contain,
-             filterQuality: FilterQuality.none,
-           ),
-         ),
-         Positioned(
-           left: endPos.dx - (_snakeTailSize(tileSize) / 2),
-           top: endPos.dy - (_snakeTailSize(tileSize) / 2),
-           child: Image.asset(
-             GameAssets.snakeTail,
-             width: _snakeTailSize(tileSize),
-             height: _snakeTailSize(tileSize),
-             filterQuality: FilterQuality.none,
-           ),
-         ),
-       ],
-     );
-  }
-
-  double _ladderWidth(double tileSize) => (tileSize * 0.72).clamp(18.0, 40.0);
-  double _snakeHeadSize(double tileSize) => (tileSize * 0.88).clamp(24.0, 52.0);
-  double _snakeTailSize(double tileSize) => (tileSize * 0.72).clamp(20.0, 44.0);
-
-  Offset _getTileCenter(int tileNumber, double tileSize) {
-    // 0-indexed coords
-    int y = (tileNumber - 1) ~/ 10; // 0 is bottom
-    int x = (tileNumber - 1) % 10;
-    if (y % 2 != 0) x = 9 - x; // Zigzag
-    
-    // Convert to screen coords (Top-Left origin)
-    // Row 0 is Top (y=9 in our logic).
-    // ScreenY = (9 - y) * tileSize
-    final double screenX = x * tileSize + (tileSize / 2);
-    final double screenY = (9 - y) * tileSize + (tileSize / 2);
-    return Offset(screenX, screenY);
   }
 
   Widget _buildToolbox() {
@@ -309,44 +213,4 @@ class _MapEditorScreenState extends State<MapEditorScreen> {
       },
     );
   }
-}
-
-// Minimal duplication of painter for editor visual
-class SnakeBodyPainter extends CustomPainter {
-  final Offset start; // Head
-  final Offset end;   // Tail
-  final double tileSize;
-
-  SnakeBodyPainter(this.start, this.end, this.tileSize);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    paintSnakeBody(canvas, start, end);
-  }
-  
-  // Reusing logic (inline)
-  void paintSnakeBody(Canvas canvas, Offset start, Offset end) {
-    final paint = Paint()
-      ..color = const Color(0xFF00FF00)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = (tileSize * 0.24).clamp(6.0, 14.0);
-
-    final path = Path();
-    path.moveTo(start.dx, start.dy);
-    final mid = (start + end) / 2;
-    // Simple S curve
-    final wave = (tileSize * 1.1).clamp(24.0, 52.0);
-    final control1 = Offset(mid.dx + wave, start.dy + (mid.dy - start.dy)/2);
-    final control2 = Offset(mid.dx - wave, end.dy - (end.dy - mid.dy)/2);
-    path.cubicTo(control1.dx, control1.dy, control2.dx, control2.dy, end.dx, end.dy);
-    
-    // Outer glow
-    canvas.drawPath(path, paint..strokeWidth = (tileSize * 0.30).clamp(8.0, 18.0)..color = const Color(0xFF00FF00).withValues(alpha: 0.3)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
-    // Inner Clean
-    canvas.drawPath(path, paint..strokeWidth = (tileSize * 0.18).clamp(4.0, 10.0)..color = const Color(0xFFAAFFAA)..maskFilter = null);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
