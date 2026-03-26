@@ -81,3 +81,45 @@ class GameBoard extends StatelessWidget {
     return Offset(x, y);
   }
 }
+
+class LadderPainter extends CustomPainter {
+  final int rungCount;
+
+  LadderPainter({required this.rungCount});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final railPaint = Paint()
+      ..color = const Color(0xFFD97706)
+      ..strokeWidth = size.width * 0.16
+      ..strokeCap = StrokeCap.round;
+    final rungPaint = Paint()
+      ..color = const Color(0xFFFCD34D)
+      ..strokeWidth = size.width * 0.13
+      ..strokeCap = StrokeCap.round;
+    final borderPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.22)
+      ..strokeWidth = size.width * 0.22
+      ..strokeCap = StrokeCap.round;
+
+    final leftX = size.width * 0.28;
+    final rightX = size.width * 0.72;
+    final top = size.height * 0.06;
+    final bottom = size.height * 0.94;
+
+    canvas.drawLine(Offset(leftX, top), Offset(leftX, bottom), borderPaint);
+    canvas.drawLine(Offset(rightX, top), Offset(rightX, bottom), borderPaint);
+    canvas.drawLine(Offset(leftX, top), Offset(leftX, bottom), railPaint);
+    canvas.drawLine(Offset(rightX, top), Offset(rightX, bottom), railPaint);
+
+    for (int i = 1; i <= rungCount; i++) {
+      final y = top + ((bottom - top) * i / (rungCount + 1));
+      canvas.drawLine(Offset(leftX, y), Offset(rightX, y), rungPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant LadderPainter oldDelegate) {
+    return oldDelegate.rungCount != rungCount;
+  }
+}
