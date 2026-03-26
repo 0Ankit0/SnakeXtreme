@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import '../widgets/board_tile.dart';
 import '../widgets/player_token.dart';
 import '../controllers/game_controller.dart';
-import '../utils/sprite_utils.dart';
 
 class GameBoard extends StatelessWidget {
   final GameController? controller;
@@ -161,8 +160,6 @@ class GameBoard extends StatelessWidget {
           ladderSize = 2;
         }
         
-        final asset = GameAssets.getLadderBySize(ladderSize);
-
         // Ladders are vertical images. Rotating +90 deg relative to angle?
         // atan2(dy, dx) gives angle of line.
         // If line is vertical up (-90 deg), we want image up.
@@ -176,10 +173,10 @@ class GameBoard extends StatelessWidget {
             child: SizedBox(
               width: _ladderWidth(tileSize),
               height: distance,
-              child: Image.asset(
-                asset,
-                fit: BoxFit.fill,
-                filterQuality: FilterQuality.none,
+              child: CustomPaint(
+                painter: LadderPainter(
+                  rungCount: ladderSize == 1 ? 4 : ladderSize == 2 ? 6 : 8,
+                ),
               ),
             ),
           ),
@@ -209,10 +206,13 @@ class GameBoard extends StatelessWidget {
                child: SizedBox(
                  width: _snakeHeadSize(tileSize),
                  height: _snakeHeadSize(tileSize),
-                 child: Image.asset(
-                   GameAssets.snakeHead,
-                   fit: BoxFit.contain,
-                   filterQuality: FilterQuality.none,
+                 child: DecoratedBox(
+                   decoration: BoxDecoration(
+                     shape: BoxShape.circle,
+                     color: const Color(0xFFEF4444),
+                     border: Border.all(color: Colors.white, width: 1.8),
+                   ),
+                   child: const Icon(Icons.pest_control_rounded, color: Colors.white),
                  ),
                ),
              ),
@@ -220,11 +220,14 @@ class GameBoard extends StatelessWidget {
              Positioned(
                left: endCenter.dx - (_snakeTailSize(tileSize) / 2),
                top: endCenter.dy - (_snakeTailSize(tileSize) / 2),
-               child: Image.asset(
-                 GameAssets.snakeTail,
+               child: Container(
                  width: _snakeTailSize(tileSize),
                  height: _snakeTailSize(tileSize),
-                 filterQuality: FilterQuality.none,
+                 decoration: BoxDecoration(
+                   color: const Color(0xFF16A34A),
+                   borderRadius: BorderRadius.circular(999),
+                   border: Border.all(color: Colors.white, width: 1.5),
+                 ),
                ),
              ),
           ],
@@ -284,4 +287,46 @@ class SnakeBodyPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class LadderPainter extends CustomPainter {
+  final int rungCount;
+
+  LadderPainter({required this.rungCount});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final railPaint = Paint()
+      ..color = const Color(0xFFD97706)
+      ..strokeWidth = size.width * 0.16
+      ..strokeCap = StrokeCap.round;
+    final rungPaint = Paint()
+      ..color = const Color(0xFFFCD34D)
+      ..strokeWidth = size.width * 0.13
+      ..strokeCap = StrokeCap.round;
+    final borderPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.22)
+      ..strokeWidth = size.width * 0.22
+      ..strokeCap = StrokeCap.round;
+
+    final leftX = size.width * 0.28;
+    final rightX = size.width * 0.72;
+    final top = size.height * 0.06;
+    final bottom = size.height * 0.94;
+
+    canvas.drawLine(Offset(leftX, top), Offset(leftX, bottom), borderPaint);
+    canvas.drawLine(Offset(rightX, top), Offset(rightX, bottom), borderPaint);
+    canvas.drawLine(Offset(leftX, top), Offset(leftX, bottom), railPaint);
+    canvas.drawLine(Offset(rightX, top), Offset(rightX, bottom), railPaint);
+
+    for (int i = 1; i <= rungCount; i++) {
+      final y = top + ((bottom - top) * i / (rungCount + 1));
+      canvas.drawLine(Offset(leftX, y), Offset(rightX, y), rungPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant LadderPainter oldDelegate) {
+    return oldDelegate.rungCount != rungCount;
+  }
 }
