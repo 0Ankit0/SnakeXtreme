@@ -64,6 +64,7 @@ class BoardOverlayLayer extends StatelessWidget {
   Widget _buildSnake(int start, int end) {
     final startCenter = BoardGeometry.tileCenter(start, tileSize);
     final endCenter = BoardGeometry.tileCenter(end, tileSize);
+    final headAngle = math.atan2(endCenter.dy - startCenter.dy, endCenter.dx - startCenter.dx);
     return Stack(
       children: [
         Positioned.fill(
@@ -78,29 +79,27 @@ class BoardOverlayLayer extends StatelessWidget {
         Positioned(
           left: startCenter.dx - (_snakeHeadSize() / 2),
           top: startCenter.dy - (_snakeHeadSize() / 2),
-          child: SizedBox(
-            width: _snakeHeadSize(),
-            height: _snakeHeadSize(),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFEF4444),
-                border: Border.all(color: Colors.white, width: 1.8),
+          child: Transform.rotate(
+            angle: headAngle,
+            child: SizedBox(
+              width: _snakeHeadSize(),
+              height: _snakeHeadSize(),
+              child: Image.asset(
+                'assets/images/snake/snake_head.png',
+                fit: BoxFit.contain,
               ),
-              child: const Icon(Icons.pest_control_rounded, color: Colors.white),
             ),
           ),
         ),
         Positioned(
           left: endCenter.dx - (_snakeTailSize() / 2),
           top: endCenter.dy - (_snakeTailSize() / 2),
-          child: Container(
+          child: SizedBox(
             width: _snakeTailSize(),
             height: _snakeTailSize(),
-            decoration: BoxDecoration(
-              color: const Color(0xFF16A34A),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white, width: 1.5),
+            child: Image.asset(
+              'assets/images/snake/snake_tail.png',
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -203,15 +202,15 @@ class SnakeBodyPainter extends CustomPainter {
     canvas.drawPath(
       path,
       paint
-        ..strokeWidth = (tileSize * 0.34).clamp(10.0, 20.0)
-        ..color = Colors.black.withValues(alpha: 0.5)
+        ..strokeWidth = (tileSize * 0.36).clamp(11.0, 22.0)
+        ..color = Colors.black.withValues(alpha: 0.42)
         ..shader = null,
     );
     canvas.drawPath(
       path,
       paint
-        ..strokeWidth = (tileSize * 0.26).clamp(7.0, 16.0)
-        ..shader = const LinearGradient(colors: [Colors.greenAccent, Colors.green])
+        ..strokeWidth = (tileSize * 0.28).clamp(8.0, 18.0)
+        ..shader = const LinearGradient(colors: [Color(0xFF86EFAC), Color(0xFF15803D)])
             .createShader(Rect.fromPoints(start, end)),
     );
   }

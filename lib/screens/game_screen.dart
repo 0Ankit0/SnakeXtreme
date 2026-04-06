@@ -197,8 +197,7 @@ class _GameScreenState extends State<GameScreen> {
                         child: Center(
                           child: GestureDetector(
                             onTap: _controller.isRolling ? null : () => _controller.rollDice(),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
+                            child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                               decoration: BoxDecoration(
                                 color: _controller.isRolling ? Colors.grey : AppColors.primary,
@@ -214,21 +213,28 @@ class _GameScreenState extends State<GameScreen> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (_controller.isRolling)
-                                    const _RollingDiceIcon()
-                                  else
-                                    _DiceFace(
-                                      key: ValueKey(_controller.diceValue),
-                                      number: _controller.diceValue,
+                                  SizedBox(
+                                    width: 84,
+                                    height: 84,
+                                    child: Center(
+                                      child: _controller.isRolling
+                                          ? const _RollingDiceIcon()
+                                          : _DiceFace(
+                                              key: ValueKey(_controller.diceValue),
+                                              number: _controller.diceValue,
+                                            ),
                                     ),
-                                  
+                                  ),
                                   const SizedBox(height: 8),
-                                  
-                                  Text(
-                                    _controller.isRolling ? 'ROLLING...' : 'ROLL DICE',
-                                    style: GoogleFonts.pressStart2p(
-                                      fontSize: 12,
-                                      color: Colors.white,
+                                  SizedBox(
+                                    width: 120,
+                                    child: Text(
+                                      _controller.isRolling ? 'ROLLING...' : 'ROLL DICE',
+                                      style: GoogleFonts.pressStart2p(
+                                        fontSize: 12,
+                                        color: Colors.white,
+                                      ),
+                                      textAlign: TextAlign.center,
                                     ),
                                   ),
                                 ],
@@ -310,7 +316,7 @@ class _RollingDiceIconState extends State<_RollingDiceIcon>
       turns: _controller,
       child: const Icon(
         Icons.casino_rounded,
-        size: 72,
+        size: 68,
         color: Colors.white,
       ),
     );
